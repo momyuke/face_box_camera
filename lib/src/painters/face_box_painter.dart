@@ -26,10 +26,10 @@ class FaceBoxPainter extends CustomPainter {
 
     // Draw the target box
     final targetRect = Rect.fromLTWH(
-      options.boxRect.left * size.width,
-      options.boxRect.top * size.height,
-      options.boxRect.width * size.width,
-      options.boxRect.height * size.height,
+      options.boxLimitRect.left * size.width,
+      options.boxLimitRect.top * size.height,
+      options.boxLimitRect.width * size.width,
+      options.boxLimitRect.height * size.height,
     );
     canvas.drawRect(targetRect, boxPaint);
 

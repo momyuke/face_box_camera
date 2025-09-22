@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_box_camera/face_box_camera.dart';
 
 void main() {
   test('adds one to input values', () {

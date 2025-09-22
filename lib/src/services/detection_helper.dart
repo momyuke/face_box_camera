@@ -24,6 +24,7 @@ class DetectionHelper {
     return limitBoxCoordinate.contains(detectionFaceCoordinate.center);
   }
 
+
   /// Compute overlap percent relative to face area (0..1)
   double overlapPercent() {
     final intersection = detectionFaceCoordinate.intersect(limitBoxCoordinate);

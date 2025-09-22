@@ -44,6 +44,23 @@ class MlkitHelper {
     }
   }
 
+  /// Scaling Rct from camera to preview camera size
+  Rect scaleRectPreviewToScreen(
+    Rect faceBox,
+    Size previewSize,
+    Size screenSize,
+  ) {
+    double scaleX = screenSize.width / previewSize.height;
+    double scaleY = screenSize.height / previewSize.width;
+
+    return Rect.fromLTRB(
+      faceBox.left * scaleX,
+      faceBox.top * scaleY,
+      faceBox.right * scaleX,
+      faceBox.bottom * scaleY,
+    );
+  }
+
   /// Convert CameraImage to InputImage. Returns null when conversion not possible.
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     // pick the camera that corresponds to the controller (fallback to first camera)
@@ -66,7 +83,8 @@ class MlkitHelper {
         rotationDegrees = (sensorOrientation + rotationCompensation) % 360;
       } else {
         // back camera
-        rotationDegrees = (sensorOrientation - rotationCompensation + 360) % 360;
+        rotationDegrees =
+            (sensorOrientation - rotationCompensation + 360) % 360;
       }
       rotation = InputImageRotationValue.fromRawValue(rotationDegrees);
     }

@@ -1,13 +1,12 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
-import '../models/face_info.dart';
 import '../models/face_box_options.dart';
-import '../services/mlkit_helper.dart';
+import '../models/face_info.dart';
 import '../services/detection_helper.dart';
+import '../services/mlkit_helper.dart';
 
 typedef FaceDetectedCallback = void Function(FaceInfo face);
 typedef FaceInsideBoxCallback = void Function(FaceInfo face, double overlap);
@@ -26,39 +25,47 @@ class FaceBoxController {
 
   late CameraController _cameraController;
   late MlkitHelper _mlkitHelper;
+
+  /// List of available cameras
   List<CameraDescription> _cameras = [];
 
   bool _running = false;
   Timer? _throttleTimer;
 
-  void testMantap(){
-
-  }
-
   /// Latest detected faces (ValueNotifier for listening in widgets).
   final ValueNotifier<List<FaceInfo>> facesNotifier =
       ValueNotifier<List<FaceInfo>>([]);
-      
+
+  /// Camera Controller
+  CameraController get cameraController => _cameraController;
+
   FaceBoxController({required this.options});
+
+  Future<void> _initializeCamera(CameraDescription camera) async {
+    try {
+      _cameraController = CameraController(
+        camera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await _cameraController.initialize();
+      _mlkitHelper = MlkitHelper(
+        cameras: _cameras,
+        cameraController: _cameraController,
+      );
+
+      _running = true;
+      _startImageStream();
+    } catch (e) {
+      onError?.call(e);
+    }
+  }
 
   Future<void> initialize() async {
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) throw Exception("No cameras available");
-
-      _cameraController = CameraController(
-        _cameras.first,
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
-
-      await _cameraController.initialize();
-
-      _mlkitHelper =
-          MlkitHelper(cameras: _cameras, cameraController: _cameraController);
-
-      _running = true;
-      _startImageStream();
+      _initializeCamera(_cameras.first);
     } catch (e) {
       onError?.call(e);
     }
@@ -75,12 +82,12 @@ class FaceBoxController {
         facesNotifier.value = [];
         return;
       }
-
-      final rect = Rect.fromLTWH(
-        face.boundingBox.left / image.width,
-        face.boundingBox.top / image.height,
-        face.boundingBox.width / image.width,
-        face.boundingBox.height / image.height,
+      final contextSize = options.boxKey?.currentContext?.size;
+      if (contextSize == null) return;
+      final rect = _mlkitHelper.scaleRectPreviewToScreen(
+        face.boundingBox,
+        _cameraController.value.previewSize!,
+        contextSize,
       );
 
       final faceInfo = FaceInfo(
@@ -90,13 +97,13 @@ class FaceBoxController {
       );
 
       facesNotifier.value = [faceInfo];
-      if(onFaceDetected != null){
+      if (onFaceDetected != null) {
         onFaceDetected!(faceInfo);
       }
 
       // check inside-box
       final dh = DetectionHelper(
-        limitBoxCoordinate: options.boxRect,
+        limitBoxCoordinate: options.boxLimitRect,
         detectionFaceCoordinate: rect,
       );
 
@@ -111,13 +118,20 @@ class FaceBoxController {
     });
   }
 
-  CameraController get cameraController => _cameraController;
-
   Future<void> dispose() async {
     _running = false;
     _throttleTimer?.cancel();
     await _cameraController.dispose();
     _mlkitHelper.dispose();
     facesNotifier.dispose();
+  }
+
+  Future<void> swithLense() async {
+    final newCamera = _cameras.firstWhere(
+      (camera) =>
+          camera.lensDirection != _cameraController.description.lensDirection,
+    );
+    await dispose();
+    _initializeCamera(newCamera);
   }
 }
