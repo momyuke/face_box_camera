@@ -23,7 +23,7 @@ class FaceBoxController {
   /// Called on error.
   void Function(Object error)? onError;
 
-  late CameraController _cameraController;
+  CameraController? _cameraController;
   late MlkitHelper _mlkitHelper;
 
   /// List of available cameras
@@ -37,7 +37,7 @@ class FaceBoxController {
       ValueNotifier<List<FaceInfo>>([]);
 
   /// Camera Controller
-  CameraController get cameraController => _cameraController;
+  CameraController? get cameraController => _cameraController;
 
   FaceBoxController({required this.options});
 
@@ -48,10 +48,11 @@ class FaceBoxController {
         ResolutionPreset.medium,
         enableAudio: false,
       );
-      await _cameraController.initialize();
+      await _cameraController?.initialize();
+
       _mlkitHelper = MlkitHelper(
         cameras: _cameras,
-        cameraController: _cameraController,
+        cameraController: _cameraController!,
       );
 
       _running = true;
@@ -65,14 +66,14 @@ class FaceBoxController {
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) throw Exception("No cameras available");
-      _initializeCamera(_cameras.first);
+      await _initializeCamera(_cameras.first);
     } catch (e) {
       onError?.call(e);
     }
   }
 
   void _startImageStream() {
-    _cameraController.startImageStream((CameraImage image) async {
+    _cameraController?.startImageStream((CameraImage image) async {
       // throttle to ~10 FPS
       if (_throttleTimer?.isActive ?? false) return;
       _throttleTimer = Timer(const Duration(milliseconds: 100), () {});
@@ -86,7 +87,7 @@ class FaceBoxController {
       if (contextSize == null) return;
       final rect = _mlkitHelper.scaleRectPreviewToScreen(
         face.boundingBox,
-        _cameraController.value.previewSize!,
+        _cameraController!.value.previewSize!,
         contextSize,
       );
 
@@ -121,15 +122,15 @@ class FaceBoxController {
   Future<void> dispose() async {
     _running = false;
     _throttleTimer?.cancel();
-    await _cameraController.dispose();
+    await _cameraController?.dispose();
     _mlkitHelper.dispose();
     facesNotifier.dispose();
   }
 
-  Future<void> swithLense() async {
+  Future<void> switchLense() async {
     final newCamera = _cameras.firstWhere(
       (camera) =>
-          camera.lensDirection != _cameraController.description.lensDirection,
+          camera.lensDirection != _cameraController?.description.lensDirection,
     );
     await dispose();
     _initializeCamera(newCamera);

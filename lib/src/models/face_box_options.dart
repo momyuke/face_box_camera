@@ -6,7 +6,7 @@ class FaceBoxOptions {
   GlobalKey? boxKey;
 
   /// Return either Rect from key.
-  /// Will return [Rect.zero] if both is null
+  /// Will return [Rect.zero] if its null
   Rect get boxLimitRect {
     if (boxKey != null) {
       final box = boxKey?.currentContext?.findRenderObject() as RenderBox?;

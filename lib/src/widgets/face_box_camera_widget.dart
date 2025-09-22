@@ -20,9 +20,9 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
   final GlobalKey _boxLimitKey = GlobalKey();
   @override
   void initState() {
-    super.initState();
-    widget.controller.options.boxKey = _boxLimitKey;
     widget.controller.initialize();
+    widget.controller.options.boxKey = _boxLimitKey;
+    super.initState();
   }
 
   @override
@@ -37,13 +37,13 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
     return ValueListenableBuilder(
       valueListenable: controller.facesNotifier,
       builder: (_, faces, __) {
-        if (!controller.cameraController.value.isInitialized) {
+        if (!(controller.cameraController?.value.isInitialized ?? false)) {
           return const Center(child: CircularProgressIndicator());
         }
         return Stack(
           fit: StackFit.expand,
           children: [
-            CameraPreview(controller.cameraController),
+            CameraPreview(controller.cameraController!),
             if (widget.child != null)
               SizedBox(key: _boxLimitKey, child: widget.child),
 
