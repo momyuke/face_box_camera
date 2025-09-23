@@ -41,7 +41,6 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
           return const Center(child: CircularProgressIndicator());
         }
         return Stack(
-          fit: StackFit.expand,
           children: [
             CameraPreview(controller.cameraController!),
             if (widget.child != null)
