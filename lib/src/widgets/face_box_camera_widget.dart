@@ -6,8 +6,14 @@ import '../painters/face_box_painter.dart';
 
 class FaceBoxCameraWidget extends StatefulWidget {
   final FaceBoxController controller;
+
+  /// Called whenever face detected (whether the face inside a box or not)
   final FaceDetectedCallback? onFaceDetected;
+
+  /// Called whenever face detected inside box
   final FaceInsideBoxCallback? onFaceInsideBox;
+
+  /// Called whenever there is an error inside logic FaceBoxCamera package
   final FaceErrorCallback? onError;
 
   /// Child that would be a limitor for detection face. Either the face is inside the child or not
@@ -62,7 +68,9 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
         }
         return Stack(
           children: [
-            CameraPreview(_controller.cameraController!),
+            Positioned.fill(
+              child: CameraPreview(_controller.cameraController!),
+            ),
             if (widget.child != null)
               Center(
                 child: SizedBox(key: _boxLimitKey, child: widget.child),
