@@ -6,11 +6,23 @@ import '../painters/face_box_painter.dart';
 
 class FaceBoxCameraWidget extends StatefulWidget {
   final FaceBoxController controller;
+  final FaceDetectedCallback? onFaceDetected;
+  final FaceInsideBoxCallback? onFaceInsideBox;
+  final FaceErrorCallback? onError;
 
   /// Child that would be a limitor for detection face. Either the face is inside the child or not
   final Widget? child;
+  final Widget? onLoadingWidget;
 
-  const FaceBoxCameraWidget({super.key, required this.controller, this.child});
+  const FaceBoxCameraWidget({
+    super.key,
+    required this.controller,
+    this.child,
+    this.onLoadingWidget,
+    this.onFaceDetected,
+    this.onFaceInsideBox,
+    this.onError,
+  });
 
   @override
   State<FaceBoxCameraWidget> createState() => _FaceBoxCameraWidgetState();
@@ -18,39 +30,49 @@ class FaceBoxCameraWidget extends StatefulWidget {
 
 class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
   final GlobalKey _boxLimitKey = GlobalKey();
+  late FaceBoxController _controller;
+
   @override
   void initState() {
-    widget.controller.initialize();
-    widget.controller.options.boxKey = _boxLimitKey;
+    _controller = widget.controller.copyWith(
+      onError: widget.onError,
+      onFaceDetected: widget.onFaceDetected,
+      onFaceInsideBox: widget.onFaceInsideBox,
+    );
+    _controller.initialize();
+    _controller.options.boxKey = _boxLimitKey;
     super.initState();
   }
 
   @override
   void dispose() {
-    widget.controller.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
     return ValueListenableBuilder(
-      valueListenable: controller.facesNotifier,
+      valueListenable: _controller.facesNotifier,
       builder: (_, faces, __) {
-        if (!(controller.cameraController?.value.isInitialized ?? false)) {
-          return const Center(child: CircularProgressIndicator());
+        if (!(_controller.cameraController?.value.isInitialized ?? false)) {
+          return Center(
+            child: widget.onLoadingWidget ?? CircularProgressIndicator(),
+          );
         }
         return Stack(
           children: [
-            CameraPreview(controller.cameraController!),
+            CameraPreview(_controller.cameraController!),
             if (widget.child != null)
-              SizedBox(key: _boxLimitKey, child: widget.child),
+              Center(
+                child: SizedBox(key: _boxLimitKey, child: widget.child),
+              ),
 
             if (widget.child == null)
               CustomPaint(
                 key: _boxLimitKey,
                 painter: FaceBoxPainter(
-                  options: controller.options,
+                  options: _controller.options,
                   faces: faces,
                 ),
               ),

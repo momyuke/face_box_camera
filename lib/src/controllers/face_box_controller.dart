@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -10,18 +11,22 @@ import '../services/mlkit_helper.dart';
 
 typedef FaceDetectedCallback = void Function(FaceInfo face);
 typedef FaceInsideBoxCallback = void Function(FaceInfo face, double overlap);
+typedef FaceErrorCallback = void Function(Object error);
 
 class FaceBoxController {
   final FaceBoxOptions options;
 
+  /// Decide which camera direction that would be use
+  final CameraLensDirection? cameraLensDirection;
+
   /// Called whenever a face is detected (first face only for now).
-  FaceDetectedCallback? onFaceDetected;
+  final FaceDetectedCallback? onFaceDetected;
 
   /// Called when a detected face is inside the defined box.
-  FaceInsideBoxCallback? onFaceInsideBox;
+  final FaceInsideBoxCallback? onFaceInsideBox;
 
   /// Called on error.
-  void Function(Object error)? onError;
+  FaceErrorCallback? onError;
 
   CameraController? _cameraController;
   late MlkitHelper _mlkitHelper;
@@ -39,7 +44,29 @@ class FaceBoxController {
   /// Camera Controller
   CameraController? get cameraController => _cameraController;
 
-  FaceBoxController({required this.options});
+  FaceBoxController({
+    required this.options,
+    this.onFaceDetected,
+    this.onError,
+    this.onFaceInsideBox,
+    this.cameraLensDirection,
+  });
+
+  FaceBoxController copyWith({
+    FaceBoxOptions? options,
+    FaceErrorCallback? onError,
+    FaceDetectedCallback? onFaceDetected,
+    FaceInsideBoxCallback? onFaceInsideBox,
+    CameraLensDirection? cameraLensDirection,
+  }) {
+    return FaceBoxController(
+      options: options ?? this.options,
+      onError: onError ?? this.onError,
+      onFaceDetected: onFaceDetected ?? this.onFaceDetected,
+      onFaceInsideBox: onFaceInsideBox ?? this.onFaceInsideBox,
+      cameraLensDirection: cameraLensDirection ?? this.cameraLensDirection,
+    );
+  }
 
   Future<void> _initializeCamera(CameraDescription camera) async {
     try {
@@ -47,6 +74,11 @@ class FaceBoxController {
         camera,
         ResolutionPreset.medium,
         enableAudio: false,
+
+        /// According to ML Kit docs, the accepted ImageFormatGroup for Android only nv21 and iOS only bgra8888
+        imageFormatGroup: Platform.isAndroid
+            ? ImageFormatGroup.nv21
+            : ImageFormatGroup.bgra8888,
       );
       await _cameraController?.initialize();
 
@@ -66,7 +98,13 @@ class FaceBoxController {
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) throw Exception("No cameras available");
-      await _initializeCamera(_cameras.first);
+      CameraDescription selectedCamera = _cameras.first;
+      if (cameraLensDirection != null) {
+        selectedCamera = _cameras.firstWhere(
+          (camera) => camera.lensDirection == cameraLensDirection,
+        );
+      }
+      await _initializeCamera(selectedCamera);
     } catch (e) {
       onError?.call(e);
     }

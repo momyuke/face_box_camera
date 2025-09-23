@@ -104,7 +104,9 @@ class MlkitHelper {
       return null;
     }
 
-    // Compose bytes (convert YUV420 -> NV21 if needed)
+    /// Compose bytes (convert YUV420 -> NV21 if needed)
+    /// Due to issue of camera that doesn't returning the correct ImageFormatGroup (nv21)
+    /// we need to convert it from YUV420 to nv21
     late final Uint8List bytes;
     if (format == InputImageFormat.yuv_420_888) {
       bytes = _convertYUV420ToNV21(image);
