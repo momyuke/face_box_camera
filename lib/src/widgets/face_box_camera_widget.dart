@@ -16,8 +16,13 @@ class FaceBoxCameraWidget extends StatefulWidget {
   /// Called whenever there is an error inside logic FaceBoxCamera package
   final FaceErrorCallback? onError;
 
+  /// Called whenever eyes is blink
+  final VoidCallback? onEyeBlink;
+
   /// Child that would be a limitor for detection face. Either the face is inside the child or not
   final Widget? child;
+
+  /// Called when camera is being initialized
   final Widget? onLoadingWidget;
 
   const FaceBoxCameraWidget({
@@ -28,6 +33,7 @@ class FaceBoxCameraWidget extends StatefulWidget {
     this.onFaceDetected,
     this.onFaceInsideBox,
     this.onError,
+    this.onEyeBlink,
   });
 
   @override
@@ -44,6 +50,7 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
       onError: widget.onError,
       onFaceDetected: widget.onFaceDetected,
       onFaceInsideBox: widget.onFaceInsideBox,
+      onEyeBlink: widget.onEyeBlink,
     );
     _controller.initialize();
     _controller.options.boxKey = _boxLimitKey;

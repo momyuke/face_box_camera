@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:face_box_camera/src/models/eye_blink_buffer.dart';
+import 'package:face_box_camera/src/models/face_box_camera_mode.dart';
 import 'package:flutter/material.dart';
 
 import '../models/face_box_options.dart';
@@ -25,17 +27,25 @@ class FaceBoxController {
   /// Called when a detected face is inside the defined box.
   final FaceInsideBoxCallback? onFaceInsideBox;
 
+  /// Called when a detected face is inside the defined box.
+  final VoidCallback? onEyeBlink;
+
   /// Called on error.
   FaceErrorCallback? onError;
 
   CameraController? _cameraController;
   late MlkitHelper _mlkitHelper;
 
+  /// Buffer frames to decide is eye blink or not
+  final EyeBlinkBuffer _eyeBlinkBuffer = EyeBlinkBuffer();
+
   /// List of available cameras
   List<CameraDescription> _cameras = [];
 
   bool _running = false;
   Timer? _throttleTimer;
+
+  bool isProcessingFrame = false;
 
   /// Latest detected faces (ValueNotifier for listening in widgets).
   final ValueNotifier<List<FaceInfo>> facesNotifier =
@@ -50,6 +60,7 @@ class FaceBoxController {
     this.onError,
     this.onFaceInsideBox,
     this.cameraLensDirection,
+    this.onEyeBlink,
   });
 
   FaceBoxController copyWith({
@@ -58,6 +69,7 @@ class FaceBoxController {
     FaceDetectedCallback? onFaceDetected,
     FaceInsideBoxCallback? onFaceInsideBox,
     CameraLensDirection? cameraLensDirection,
+    VoidCallback? onEyeBlink,
   }) {
     return FaceBoxController(
       options: options ?? this.options,
@@ -65,6 +77,7 @@ class FaceBoxController {
       onFaceDetected: onFaceDetected ?? this.onFaceDetected,
       onFaceInsideBox: onFaceInsideBox ?? this.onFaceInsideBox,
       cameraLensDirection: cameraLensDirection ?? this.cameraLensDirection,
+      onEyeBlink: onEyeBlink ?? this.onEyeBlink,
     );
   }
 
@@ -112,6 +125,11 @@ class FaceBoxController {
 
   void _startImageStream() {
     _cameraController?.startImageStream((CameraImage image) async {
+      if (isProcessingFrame &&
+          options.faceBoxCameraMode == FaceBoxCameraMode.block) {
+        return;
+      }
+      isProcessingFrame = true;
       // throttle to ~10 FPS
       if (_throttleTimer?.isActive ?? false) return;
       _throttleTimer = Timer(const Duration(milliseconds: 100), () {});
@@ -128,6 +146,16 @@ class FaceBoxController {
         _cameraController!.value.previewSize!,
         contextSize,
       );
+
+      _eyeBlinkBuffer.add(
+        face.leftEyeOpenProbability ?? 0,
+        face.rightEyeOpenProbability ?? 0,
+      );
+
+      if (_eyeBlinkBuffer.isBlinking()) {
+        onEyeBlink?.call();
+        _eyeBlinkBuffer.clear();
+      }
 
       final faceInfo = FaceInfo(
         boundingBox: rect,
@@ -154,6 +182,8 @@ class FaceBoxController {
       if (inside && onFaceInsideBox != null) {
         onFaceInsideBox!(faceInfo, overlap);
       }
+
+      isProcessingFrame = false;
     });
   }
 

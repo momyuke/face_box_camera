@@ -1,3 +1,4 @@
+import 'package:face_box_camera/src/models/face_box_camera_mode.dart';
 import 'package:flutter/material.dart';
 
 /// Options to configure the "target box" region where a face should appear.
@@ -24,9 +25,13 @@ class FaceBoxOptions {
   /// Minimum overlap percent [0..1] if [requireCenterInside] is false.
   final double minOverlapPercent;
 
+  /// Determine behaviour of camera would run the callback. Default is [FaceBoxCameraMode.continuous]
+  final FaceBoxCameraMode faceBoxCameraMode;
+
   FaceBoxOptions({
     this.requireCenterInside = true,
     this.minOverlapPercent = 0.5,
+    this.faceBoxCameraMode = FaceBoxCameraMode.continuous,
     this.boxKey,
   });
 }
