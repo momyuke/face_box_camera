@@ -28,10 +28,14 @@ class FaceBoxOptions {
   /// Determine behaviour of camera would run the callback. Default is [FaceBoxCameraMode.continuous]
   final FaceBoxCameraMode faceBoxCameraMode;
 
+  /// Throttle the image stream before processing the next frame
+  final Duration throttleDuration;
+
   FaceBoxOptions({
     this.requireCenterInside = true,
     this.minOverlapPercent = 0.5,
     this.faceBoxCameraMode = FaceBoxCameraMode.continuous,
     this.boxKey,
+    this.throttleDuration = const Duration(milliseconds: 100),
   });
 }

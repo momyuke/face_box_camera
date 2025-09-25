@@ -130,9 +130,10 @@ class FaceBoxController {
         return;
       }
       isProcessingFrame = true;
+
       // throttle to ~10 FPS
       if (_throttleTimer?.isActive ?? false) return;
-      _throttleTimer = Timer(const Duration(milliseconds: 100), () {});
+      _throttleTimer = Timer(options.throttleDuration, () {});
 
       final face = await _mlkitHelper.processCameraImage(image);
       if (face == null) {
