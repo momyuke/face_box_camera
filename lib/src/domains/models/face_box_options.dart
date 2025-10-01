@@ -1,4 +1,4 @@
-import 'package:face_box_camera/src/models/face_box_camera_mode.dart';
+import 'package:face_box_camera/src/domains/models/face_box_camera_mode.dart';
 import 'package:flutter/material.dart';
 
 /// Options to configure the "target box" region where a face should appear.

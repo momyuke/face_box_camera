@@ -1,34 +1,28 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:face_box_camera/src/models/eye_blink_buffer.dart';
-import 'package:face_box_camera/src/models/face_box_camera_mode.dart';
+import 'package:face_box_camera/src/domains/domains.dart';
 import 'package:flutter/material.dart';
 
-import '../models/face_box_options.dart';
-import '../models/face_info.dart';
 import '../services/detection_helper.dart';
 import '../services/mlkit_helper.dart';
-
-typedef FaceDetectedCallback = void Function(FaceInfo face);
-typedef FaceInsideBoxCallback = void Function(FaceInfo face, double overlap);
-typedef FaceErrorCallback = void Function(Object error);
 
 class FaceBoxController {
   final FaceBoxOptions options;
 
   /// Decide which camera direction that would be use
-  final CameraLensDirection? cameraLensDirection;
+  CameraLensDirection? cameraLensDirection;
 
   /// Called whenever a face is detected (first face only for now).
-  final FaceDetectedCallback? onFaceDetected;
+  FaceDetectedCallback? onFaceDetected;
 
   /// Called when a detected face is inside the defined box.
-  final FaceInsideBoxCallback? onFaceInsideBox;
+  FaceInsideBoxCallback? onFaceInsideBox;
 
   /// Called when a detected face is inside the defined box.
-  final VoidCallback? onEyeBlink;
+  VoidCallback? onEyeBlink;
 
   /// Called on error.
   FaceErrorCallback? onError;
@@ -42,7 +36,6 @@ class FaceBoxController {
   /// List of available cameras
   List<CameraDescription> _cameras = [];
 
-  bool _running = false;
   Timer? _throttleTimer;
 
   bool isProcessingFrame = false;
@@ -53,33 +46,7 @@ class FaceBoxController {
 
   /// Camera Controller
   CameraController? get cameraController => _cameraController;
-
-  FaceBoxController({
-    required this.options,
-    this.onFaceDetected,
-    this.onError,
-    this.onFaceInsideBox,
-    this.cameraLensDirection,
-    this.onEyeBlink,
-  });
-
-  FaceBoxController copyWith({
-    FaceBoxOptions? options,
-    FaceErrorCallback? onError,
-    FaceDetectedCallback? onFaceDetected,
-    FaceInsideBoxCallback? onFaceInsideBox,
-    CameraLensDirection? cameraLensDirection,
-    VoidCallback? onEyeBlink,
-  }) {
-    return FaceBoxController(
-      options: options ?? this.options,
-      onError: onError ?? this.onError,
-      onFaceDetected: onFaceDetected ?? this.onFaceDetected,
-      onFaceInsideBox: onFaceInsideBox ?? this.onFaceInsideBox,
-      cameraLensDirection: cameraLensDirection ?? this.cameraLensDirection,
-      onEyeBlink: onEyeBlink ?? this.onEyeBlink,
-    );
-  }
+  FaceBoxController({required this.options, this.cameraLensDirection});
 
   Future<void> _initializeCamera(CameraDescription camera) async {
     try {
@@ -87,6 +54,7 @@ class FaceBoxController {
         camera,
         ResolutionPreset.medium,
         enableAudio: false,
+        fps: 30,
 
         /// According to ML Kit docs, the accepted ImageFormatGroup for Android only nv21 and iOS only bgra8888
         imageFormatGroup: Platform.isAndroid
@@ -100,13 +68,13 @@ class FaceBoxController {
         cameraController: _cameraController!,
       );
 
-      _running = true;
       _startImageStream();
     } catch (e) {
       onError?.call(e);
     }
   }
 
+  /// Initializing the FaceBoxCamera, also
   Future<void> initialize() async {
     try {
       _cameras = await availableCameras();
@@ -133,7 +101,9 @@ class FaceBoxController {
 
       // throttle to ~10 FPS
       if (_throttleTimer?.isActive ?? false) return;
-      _throttleTimer = Timer(options.throttleDuration, () {});
+      if (options.throttleDuration > Duration.zero) {
+        _throttleTimer = Timer(options.throttleDuration, () {});
+      }
 
       final face = await _mlkitHelper.processCameraImage(image);
       if (face == null) {
@@ -148,27 +118,6 @@ class FaceBoxController {
         contextSize,
       );
 
-      _eyeBlinkBuffer.add(
-        face.leftEyeOpenProbability ?? 0,
-        face.rightEyeOpenProbability ?? 0,
-      );
-
-      if (_eyeBlinkBuffer.isBlinking()) {
-        onEyeBlink?.call();
-        _eyeBlinkBuffer.clear();
-      }
-
-      final faceInfo = FaceInfo(
-        boundingBox: rect,
-        trackingId: face.trackingId?.toDouble(),
-        smilingProbability: face.smilingProbability,
-      );
-
-      facesNotifier.value = [faceInfo];
-      if (onFaceDetected != null) {
-        onFaceDetected!(faceInfo);
-      }
-
       // check inside-box
       final dh = DetectionHelper(
         limitBoxCoordinate: options.boxLimitRect,
@@ -180,28 +129,76 @@ class FaceBoxController {
           ? dh.centerInside()
           : overlap >= options.minOverlapPercent;
 
-      if (inside && onFaceInsideBox != null) {
-        onFaceInsideBox!(faceInfo, overlap);
+      _eyeBlinkBuffer.addFrame(
+        face.leftEyeOpenProbability ?? 0,
+        face.rightEyeOpenProbability ?? 0,
+      );
+
+      if (_eyeBlinkBuffer.isBlinking() && inside) {
+        onEyeBlink?.call();
+        _eyeBlinkBuffer.clear();
       }
 
+      final faceInfo = FaceInfo(
+        boundingBox: rect,
+        trackingId: face.trackingId?.toDouble(),
+        smilingProbability: face.smilingProbability,
+      );
+
+      facesNotifier.value = [faceInfo];
+      onFaceDetected?.call(faceInfo);
+
+      if (inside) onFaceInsideBox?.call(face, overlap);
       isProcessingFrame = false;
     });
   }
 
+  /// Disposing the FaceBoxCamera
   Future<void> dispose() async {
-    _running = false;
     _throttleTimer?.cancel();
     await _cameraController?.dispose();
     _mlkitHelper.dispose();
     facesNotifier.dispose();
   }
 
+  /// Switching lense either front or back
   Future<void> switchLense() async {
-    final newCamera = _cameras.firstWhere(
-      (camera) =>
-          camera.lensDirection != _cameraController?.description.lensDirection,
-    );
-    await dispose();
-    _initializeCamera(newCamera);
+    try {
+      final newCamera = _cameras.firstWhere(
+        (camera) =>
+            camera.lensDirection !=
+            _cameraController?.description.lensDirection,
+        orElse: () => CameraDescription(
+          name: '',
+          lensDirection: CameraLensDirection.back,
+          sensorOrientation: 1,
+        ),
+      );
+      if (newCamera.name == '') return;
+      _cameraController?.dispose();
+      _initializeCamera(newCamera);
+    } catch (e) {
+      log(e.toString());
+    }
+  }
+
+  /// Manually stop the camera, it also would be stopping the image start stream
+  Future<void> stopCamera() async {
+    try {
+      _cameraController?.stopImageStream();
+      _cameraController?.dispose();
+    } catch (e) {
+      onError?.call(e);
+    }
+  }
+
+  /// Manually start the camera
+  Future<void> startCamera() async {
+    try {
+      await initialize();
+      _startImageStream();
+    } catch (e) {
+      onError?.call(e);
+    }
   }
 }

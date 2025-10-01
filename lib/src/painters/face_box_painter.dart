@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../models/face_info.dart';
-import '../models/face_box_options.dart';
+import '../domains/models/face_box_options.dart';
+import '../domains/models/face_info.dart';
 
 class FaceBoxPainter extends CustomPainter {
   final FaceBoxOptions options;
   final List<FaceInfo> faces;
 
-  FaceBoxPainter({
-    required this.options,
-    required this.faces,
-  });
+  FaceBoxPainter({required this.options, required this.faces});
 
   @override
   void paint(Canvas canvas, Size size) {

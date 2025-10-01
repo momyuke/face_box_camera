@@ -22,7 +22,7 @@ class MlkitHelper {
     ),
   );
 
-  // map DeviceOrientation -> degrees used by Android rotation compensation
+  /// map DeviceOrientation -> degrees used by Android rotation compensation
   static const Map<DeviceOrientation, int> _orientations = {
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
