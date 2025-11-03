@@ -48,7 +48,7 @@ class FaceBoxController {
   CameraController? get cameraController => _cameraController;
   FaceBoxController({required this.options, this.cameraLensDirection});
 
-  Future<void> _initializeCamera(CameraDescription camera) async {
+  Future<void> _setUp(CameraDescription camera) async {
     try {
       _cameraController = CameraController(
         camera,
@@ -61,7 +61,7 @@ class FaceBoxController {
             ? ImageFormatGroup.nv21
             : ImageFormatGroup.bgra8888,
       );
-      await _cameraController?.initialize();
+      await initializedCamera();
 
       _mlkitHelper = MlkitHelper(
         cameras: _cameras,
@@ -74,10 +74,20 @@ class FaceBoxController {
     }
   }
 
+  @visibleForTesting
+  Future<void> initializedCamera() async {
+    return await _cameraController?.initialize();
+  }
+
+  @visibleForTesting
+  Future<List<CameraDescription>> getAvailableCameras() {
+    return availableCameras();
+  }
+
   /// Initializing the FaceBoxCamera, also
   Future<void> initialize() async {
     try {
-      _cameras = await availableCameras();
+      _cameras = await getAvailableCameras();
       if (_cameras.isEmpty) throw Exception("No cameras available");
       CameraDescription selectedCamera = _cameras.first;
       if (cameraLensDirection != null) {
@@ -85,7 +95,7 @@ class FaceBoxController {
           (camera) => camera.lensDirection == cameraLensDirection,
         );
       }
-      await _initializeCamera(selectedCamera);
+      await _setUp(selectedCamera);
     } catch (e) {
       onError?.call(e);
     }
@@ -159,6 +169,8 @@ class FaceBoxController {
     await _cameraController?.dispose();
     _mlkitHelper.dispose();
     facesNotifier.dispose();
+    _cameras = [];
+    _eyeBlinkBuffer.clear();
   }
 
   /// Switching lense either front or back
@@ -176,7 +188,7 @@ class FaceBoxController {
       );
       if (newCamera.name == '') return;
       _cameraController?.dispose();
-      _initializeCamera(newCamera);
+      _setUp(newCamera);
     } catch (e) {
       log(e.toString());
     }
