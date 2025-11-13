@@ -1,9 +1,12 @@
+## 0.0.5
+
+- Change Face Box Painter
+- Improve error handling
+
 ## 0.0.4
 
 - Fix using overlapPercent doesnt work when face is in the box
 - Improve example
-- Change Face Box Painter
-- Improve error handling
 
 ## 0.0.3
 
