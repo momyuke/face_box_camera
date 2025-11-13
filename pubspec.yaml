@@ -1,6 +1,6 @@
 name: face_box_camera
 description: "A package to detect face inside defined a box or not."
-version: 0.0.3
+version: 0.0.4
 homepage: https://github.com/momyuke/face_box_camera
 repository: https://github.com/momyuke/face_box_camera
 
@@ -13,7 +13,6 @@ dependencies:
     sdk: flutter
   google_mlkit_face_detection: ^0.13.1
   camera: ^0.11.2
-  
 
 dev_dependencies:
   flutter_test:
@@ -24,4 +23,3 @@ dev_dependencies:
   camera_platform_interface: ^2.11.0
 
 flutter:
-
