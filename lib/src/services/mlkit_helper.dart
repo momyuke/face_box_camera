@@ -63,9 +63,9 @@ class MlkitHelper {
 
   /// Convert CameraImage to InputImage. Returns null when conversion not possible.
   InputImage? _inputImageFromCameraImage(CameraImage image) {
-    // pick the camera that corresponds to the controller (fallback to first camera)
-    final camera = cameras.isNotEmpty ? cameras[0] : null;
-    if (camera == null) return null;
+    // pick the camera that corresponds to the controller (use controller's description)
+    // fallback to first camera if controller description is not available
+    final camera = cameraController.description;
     final sensorOrientation = camera.sensorOrientation;
 
     // rotation compensation (Android needs special handling)

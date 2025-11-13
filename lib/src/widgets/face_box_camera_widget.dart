@@ -43,6 +43,8 @@ class FaceBoxCameraWidget extends StatefulWidget {
 
 class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
   final GlobalKey _boxLimitKey = GlobalKey();
+  // Key attached to CameraPreview so controller can map camera coords -> global coords
+  final GlobalKey _previewKey = GlobalKey();
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
     widget.controller.onEyeBlink = widget.onEyeBlink;
     widget.controller.onFaceInsideBox = widget.onFaceInsideBox;
     widget.controller.options.boxKey = _boxLimitKey;
+    widget.controller.options.previewKey = _previewKey;
     widget.controller.initialize();
     super.initState();
   }
@@ -75,7 +78,11 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
         return Stack(
           children: [
             Positioned.fill(
-              child: CameraPreview(widget.controller.cameraController!),
+              // attach key so we can measure preview widget size & offset
+              child: CameraPreview(
+                widget.controller.cameraController!,
+                key: _previewKey,
+              ),
             ),
             if (widget.child != null)
               Center(
@@ -83,11 +90,11 @@ class _FaceBoxCameraWidgetState extends State<FaceBoxCameraWidget> {
               ),
 
             if (widget.child == null)
-              CustomPaint(
-                key: _boxLimitKey,
-                painter: FaceBoxPainter(
-                  options: widget.controller.options,
-                  faces: faces,
+              Center(
+                child: CustomPaint(
+                  key: _boxLimitKey,
+                  size: Size(316, 379),
+                  painter: FaceBoxPainter(),
                 ),
               ),
           ],

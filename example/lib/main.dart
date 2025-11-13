@@ -47,31 +47,19 @@ class _MyAppState extends State<MyApp> {
       home: Scaffold(
         body: Stack(
           children: [
-            FaceBoxCameraWidget(
-              controller: faceBoxController,
-              onFaceInsideBox: (face, overlap) {
-                // log("Face Detected with overlap + $overlap");
-                log(
-                  "Left Prob => ${face.leftEyeOpenProbability} === Right Prob => ${face.rightEyeOpenProbability}",
-                );
-              },
-              onEyeBlink: () {
-                log("Blinked Eye");
-              },
-              child: Center(
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.blueAccent.shade100,
-                      width: 2,
-                    ),
-                  ),
-                ),
+            Positioned.fill(
+              child: FaceBoxCameraWidget(
+                controller: faceBoxController,
+                onFaceInsideBox: (face, overlap) {
+                  log(
+                    "Left Prob => ${face.leftEyeOpenProbability} === Right Prob => ${face.rightEyeOpenProbability}",
+                  );
+                },
+                onEyeBlink: () {
+                  log("Blinked Eye");
+                },
               ),
             ),
-
             Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

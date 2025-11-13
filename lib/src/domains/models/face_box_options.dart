@@ -6,6 +6,11 @@ class FaceBoxOptions {
   /// Used to decided the size of the limit box
   GlobalKey? boxKey;
 
+  /// Key for the CameraPreview widget. Used to compute preview widget size and
+  /// global offset so face rects can be mapped into the same coordinate space
+  /// as `boxKey` (which uses global coordinates via localToGlobal).
+  GlobalKey? previewKey;
+
   /// Return either Rect from key.
   /// Will return [Rect.zero] if its null
   Rect get boxLimitRect {
@@ -37,5 +42,6 @@ class FaceBoxOptions {
     this.faceBoxCameraMode = FaceBoxCameraMode.continuous,
     this.boxKey,
     this.throttleDuration = const Duration(milliseconds: 100),
+    this.previewKey,
   });
 }

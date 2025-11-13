@@ -1,5 +1,6 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -108,58 +109,82 @@ class FaceBoxController {
         return;
       }
       isProcessingFrame = true;
+      try {
+        // throttle to ~10 FPS
+        if (_throttleTimer?.isActive ?? false) {
+          return;
+        }
+        if (options.throttleDuration > Duration.zero) {
+          _throttleTimer = Timer(options.throttleDuration, () {});
+        }
 
-      // throttle to ~10 FPS
-      if (_throttleTimer?.isActive ?? false) return;
-      if (options.throttleDuration > Duration.zero) {
-        _throttleTimer = Timer(options.throttleDuration, () {});
+        final face = await _mlkitHelper.processCameraImage(image);
+        if (face == null) {
+          facesNotifier.value = [];
+          return;
+        }
+        // Use the preview widget size & offset to map camera coords into the
+        // global coordinate space (same space used by options.boxLimitRect).
+        final previewContext = options.previewKey?.currentContext;
+        if (previewContext == null) return;
+        final previewSize = previewContext.size;
+        if (previewSize == null) return;
+
+        // Map face bounding box (camera image coords) -> preview widget coords
+        final mappedInPreview = _mlkitHelper.scaleRectPreviewToScreen(
+          face.boundingBox,
+          _cameraController!.value.previewSize!,
+          previewSize,
+        );
+
+        // Convert mapped rect (preview-local) to global coordinates by adding
+        // the preview widget's global offset so it can be compared with
+        // options.boxLimitRect (which uses localToGlobal when reporting rect).
+        final previewBox = previewContext.findRenderObject() as RenderBox;
+        final previewOffset = previewBox.localToGlobal(Offset.zero);
+        final rect = mappedInPreview.shift(previewOffset);
+
+        // check inside-box
+        final dh = DetectionHelper(
+          limitBoxCoordinate: options.boxLimitRect,
+          detectionFaceCoordinate: rect,
+        );
+
+        final overlap = dh.overlapPercent();
+        // If requireCenterInside is true, require center inside.
+        // If false, consider the face inside when either the center is inside
+        // OR the overlap percent meets the minimum threshold. This allows
+        // faces that are centered in the box to count as inside even when
+        // strict center requirement is not enabled.
+        final inside = options.requireCenterInside
+            ? dh.centerInside()
+            : (dh.centerInside() || overlap >= options.minOverlapPercent);
+
+        _eyeBlinkBuffer.addFrame(
+          face.leftEyeOpenProbability ?? 0,
+          face.rightEyeOpenProbability ?? 0,
+        );
+
+        if (_eyeBlinkBuffer.isBlinking() && inside) {
+          onEyeBlink?.call();
+          _eyeBlinkBuffer.clear();
+        }
+
+        final faceInfo = FaceInfo(
+          boundingBox: rect,
+          trackingId: face.trackingId?.toDouble(),
+          smilingProbability: face.smilingProbability,
+        );
+
+        facesNotifier.value = [faceInfo];
+        onFaceDetected?.call(faceInfo);
+
+        if (inside) onFaceInsideBox?.call(face, overlap);
+      } catch (e) {
+        onError?.call(e);
+      } finally {
+        isProcessingFrame = false;
       }
-
-      final face = await _mlkitHelper.processCameraImage(image);
-      if (face == null) {
-        facesNotifier.value = [];
-        return;
-      }
-      final contextSize = options.boxKey?.currentContext?.size;
-      if (contextSize == null) return;
-      final rect = _mlkitHelper.scaleRectPreviewToScreen(
-        face.boundingBox,
-        _cameraController!.value.previewSize!,
-        contextSize,
-      );
-
-      // check inside-box
-      final dh = DetectionHelper(
-        limitBoxCoordinate: options.boxLimitRect,
-        detectionFaceCoordinate: rect,
-      );
-
-      final overlap = dh.overlapPercent();
-      final inside = options.requireCenterInside
-          ? dh.centerInside()
-          : overlap >= options.minOverlapPercent;
-
-      _eyeBlinkBuffer.addFrame(
-        face.leftEyeOpenProbability ?? 0,
-        face.rightEyeOpenProbability ?? 0,
-      );
-
-      if (_eyeBlinkBuffer.isBlinking() && inside) {
-        onEyeBlink?.call();
-        _eyeBlinkBuffer.clear();
-      }
-
-      final faceInfo = FaceInfo(
-        boundingBox: rect,
-        trackingId: face.trackingId?.toDouble(),
-        smilingProbability: face.smilingProbability,
-      );
-
-      facesNotifier.value = [faceInfo];
-      onFaceDetected?.call(faceInfo);
-
-      if (inside) onFaceInsideBox?.call(face, overlap);
-      isProcessingFrame = false;
     });
   }
 
@@ -190,7 +215,7 @@ class FaceBoxController {
       _cameraController?.dispose();
       _setUp(newCamera);
     } catch (e) {
-      log(e.toString());
+      onError?.call(e);
     }
   }
 
