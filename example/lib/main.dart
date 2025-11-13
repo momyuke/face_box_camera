@@ -20,7 +20,7 @@ class _MyAppState extends State<MyApp> {
   final FaceBoxController faceBoxController = FaceBoxController(
     cameraLensDirection: CameraLensDirection.back,
     options: FaceBoxOptions(
-      minOverlapPercent: 0.2,
+      minOverlapPercent: 0.5,
       requireCenterInside: false,
       throttleDuration: Duration(milliseconds: 0),
     ),
@@ -43,7 +43,6 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      // home: Myapp(title: 'Flutter Demo Home Page', cameras: _cameras),
       home: Scaffold(
         body: Stack(
           children: [
@@ -51,12 +50,7 @@ class _MyAppState extends State<MyApp> {
               child: FaceBoxCameraWidget(
                 controller: faceBoxController,
                 onFaceInsideBox: (face, overlap) {
-                  log(
-                    "Left Prob => ${face.leftEyeOpenProbability} === Right Prob => ${face.rightEyeOpenProbability}",
-                  );
-                },
-                onEyeBlink: () {
-                  log("Blinked Eye");
+                  log('Face inside box is called');
                 },
               ),
             ),
