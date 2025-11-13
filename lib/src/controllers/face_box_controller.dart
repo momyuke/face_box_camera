@@ -22,6 +22,8 @@ class FaceBoxController {
   /// Called when a detected face is inside the defined box.
   FaceInsideBoxCallback? onFaceInsideBox;
 
+  VoidCallback? onFaceOutsideBox;
+
   /// Called when a detected face is inside the defined box.
   VoidCallback? onEyeBlink;
 
@@ -157,7 +159,7 @@ class FaceBoxController {
         // faces that are centered in the box to count as inside even when
         // strict center requirement is not enabled.
         final inside = options.requireCenterInside
-            ? dh.centerInside()
+            ? dh.centerInside() && overlap == 1.0
             : (dh.centerInside() || overlap >= options.minOverlapPercent);
 
         _eyeBlinkBuffer.addFrame(
@@ -179,7 +181,11 @@ class FaceBoxController {
         facesNotifier.value = [faceInfo];
         onFaceDetected?.call(faceInfo);
 
-        if (inside) onFaceInsideBox?.call(face, overlap);
+        if (inside) {
+          onFaceInsideBox?.call(face, overlap);
+        } else {
+          onFaceOutsideBox?.call();
+        }
       } catch (e) {
         onError?.call(e);
       } finally {

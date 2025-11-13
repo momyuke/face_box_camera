@@ -21,10 +21,12 @@ class _MyAppState extends State<MyApp> {
     cameraLensDirection: CameraLensDirection.back,
     options: FaceBoxOptions(
       minOverlapPercent: 0.5,
-      requireCenterInside: false,
+      requireCenterInside: true,
       throttleDuration: Duration(milliseconds: 0),
     ),
   );
+
+  bool _isFaceInsideBox = false;
 
   @override
   void initState() {
@@ -51,7 +53,42 @@ class _MyAppState extends State<MyApp> {
                 controller: faceBoxController,
                 onFaceInsideBox: (face, overlap) {
                   log('Face inside box is called');
+                  log("Overlap percent: $overlap");
+                  setState(() {
+                    _isFaceInsideBox = true;
+                  });
                 },
+                onFaceOutsideBox: () {
+                  log('Face outside box is called');
+                  setState(() {
+                    _isFaceInsideBox = false;
+                  });
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 60),
+              child: Column(
+                children: [
+                  if (_isFaceInsideBox)
+                    const Text(
+                      'Face is inside the box',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    )
+                  else
+                    const Text(
+                      'Face is outside the box',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                ],
               ),
             ),
             Column(
