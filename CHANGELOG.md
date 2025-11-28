@@ -1,3 +1,9 @@
+## 0.0.7
+
+- Update README
+- Add FPS and Processing Time notifier in Controller
+- Fix iOS minimum version for example app
+
 ## 0.0.6
 
 - Fix onFaceInsideBox still called when required center even though the face is not centered

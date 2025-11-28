@@ -70,6 +70,36 @@ class _MyAppState extends State<MyApp> {
               padding: const EdgeInsets.only(top: 60),
               child: Column(
                 children: [
+                  // Show measured processing FPS
+                  ValueListenableBuilder<double>(
+                    valueListenable: faceBoxController.fpsNotifier,
+                    builder: (_, fps, __) {
+                      log("Log Unique FPS: $fps");
+                      return Text(
+                        'FPS: ${fps.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  // Show last frame processing time (ms)
+                  ValueListenableBuilder<double>(
+                    valueListenable: faceBoxController.processingTimeNotifier,
+                    builder: (_, ms, __) {
+                      log("Log Unique Proc time: $ms ms");
+                      return Text(
+                        'Proc time: ${ms.toStringAsFixed(0)} ms',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      );
+                    },
+                  ),
                   if (_isFaceInsideBox)
                     const Text(
                       'Face is inside the box',

@@ -24,6 +24,22 @@ class DetectionHelper {
     return limitBoxCoordinate.contains(detectionFaceCoordinate.center);
   }
 
+  // If requireCenterInside is true, require center inside.
+  // If false, consider the face inside when either the center is inside
+  // OR the overlap percent meets the minimum threshold. This allows
+  // faces that are centered in the box to count as inside even when
+  // strict center requirement is not enabled.
+  bool isInside({
+    required bool isRequiredCenter,
+    double minOverlapPercent = 0.5,
+  }) {
+    final isCenteredInside = strictCornersInside();
+    final overlap = overlapPercent();
+    return isRequiredCenter
+        ? isCenteredInside
+        : (isCenteredInside || overlap >= minOverlapPercent);
+  }
+
   /// Compute overlap percent relative to face area (0..1)
   double overlapPercent() {
     final intersection = detectionFaceCoordinate.intersect(limitBoxCoordinate);

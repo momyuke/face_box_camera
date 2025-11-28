@@ -41,6 +41,16 @@ class FaceBoxController {
 
   Timer? _throttleTimer;
 
+  // FPS measurement
+  int _processedFrames = 0;
+  Timer? _fpsTimer;
+  final ValueNotifier<double> fpsNotifier = ValueNotifier<double>(0.0);
+
+  /// Last frame processing time in milliseconds (time spent in to all processing in image stream)
+  final ValueNotifier<double> processingTimeNotifier = ValueNotifier<double>(
+    0.0,
+  );
+
   bool isProcessingFrame = false;
 
   /// Latest detected faces (ValueNotifier for listening in widgets).
@@ -57,6 +67,9 @@ class FaceBoxController {
         camera,
         ResolutionPreset.medium,
         enableAudio: false,
+
+        /// Max FPS that we can used is 30 FPS since Flutter camera plugin only support up to 30 FPS
+        /// even we can set higher than 30 the streaming image would only support up to 30 FPS
         fps: 30,
 
         /// According to ML Kit docs, the accepted ImageFormatGroup for Android only nv21 and iOS only bgra8888
@@ -72,6 +85,13 @@ class FaceBoxController {
       );
 
       _startImageStream();
+
+      // Start FPS timer: publish number of processed frames per second
+      _fpsTimer?.cancel();
+      _fpsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        fpsNotifier.value = _processedFrames.toDouble();
+        _processedFrames = 0;
+      });
     } catch (e) {
       onError?.call(e);
     }
@@ -110,6 +130,8 @@ class FaceBoxController {
           options.faceBoxCameraMode == FaceBoxCameraMode.block) {
         return;
       }
+
+      final sw = Stopwatch()..start();
       isProcessingFrame = true;
       try {
         // throttle to ~10 FPS
@@ -120,7 +142,11 @@ class FaceBoxController {
           _throttleTimer = Timer(options.throttleDuration, () {});
         }
 
+        // Measure processing time for this frame
         final face = await _mlkitHelper.processCameraImage(image);
+
+        // Count processed frames for FPS measurement (frames sent to ML processing)
+        _processedFrames++;
         if (face == null) {
           facesNotifier.value = [];
           return;
@@ -152,25 +178,15 @@ class FaceBoxController {
           detectionFaceCoordinate: rect,
         );
 
-        final overlap = dh.overlapPercent();
-        // If requireCenterInside is true, require center inside.
-        // If false, consider the face inside when either the center is inside
-        // OR the overlap percent meets the minimum threshold. This allows
-        // faces that are centered in the box to count as inside even when
-        // strict center requirement is not enabled.
-        final inside = options.requireCenterInside
-            ? dh.centerInside() && overlap == 1.0
-            : (dh.centerInside() || overlap >= options.minOverlapPercent);
+        final isInside = dh.isInside(
+          isRequiredCenter: options.requireCenterInside,
+          minOverlapPercent: options.minOverlapPercent,
+        );
 
         _eyeBlinkBuffer.addFrame(
           face.leftEyeOpenProbability ?? 0,
           face.rightEyeOpenProbability ?? 0,
         );
-
-        if (_eyeBlinkBuffer.isBlinking() && inside) {
-          onEyeBlink?.call();
-          _eyeBlinkBuffer.clear();
-        }
 
         final faceInfo = FaceInfo(
           boundingBox: rect,
@@ -181,8 +197,8 @@ class FaceBoxController {
         facesNotifier.value = [faceInfo];
         onFaceDetected?.call(faceInfo);
 
-        if (inside) {
-          onFaceInsideBox?.call(face, overlap);
+        if (isInside) {
+          onFaceInsideBox?.call(face, dh.overlapPercent());
         } else {
           onFaceOutsideBox?.call();
         }
@@ -190,6 +206,8 @@ class FaceBoxController {
         onError?.call(e);
       } finally {
         isProcessingFrame = false;
+        sw.stop();
+        processingTimeNotifier.value = sw.elapsedMilliseconds.toDouble();
       }
     });
   }
@@ -200,6 +218,9 @@ class FaceBoxController {
     await _cameraController?.dispose();
     _mlkitHelper.dispose();
     facesNotifier.dispose();
+    _fpsTimer?.cancel();
+    fpsNotifier.dispose();
+    processingTimeNotifier.dispose();
     _cameras = [];
     _eyeBlinkBuffer.clear();
   }
