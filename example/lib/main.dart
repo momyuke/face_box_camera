@@ -21,7 +21,7 @@ class _MyAppState extends State<MyApp> {
     cameraLensDirection: CameraLensDirection.back,
     options: FaceBoxOptions(
       minOverlapPercent: 0.5,
-      requireCenterInside: true,
+      requireCenterInside: false,
       throttleDuration: Duration(milliseconds: 0),
     ),
   );
@@ -64,6 +64,17 @@ class _MyAppState extends State<MyApp> {
                     _isFaceInsideBox = false;
                   });
                 },
+                child: Container(
+                  width: 350,
+                  height: 350,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _isFaceInsideBox ? Colors.green : Colors.red,
+                      width: 5,
+                    ),
+                  ),
+                ),
               ),
             ),
             Padding(
@@ -93,6 +104,23 @@ class _MyAppState extends State<MyApp> {
                       log("Log Unique Proc time: $ms ms");
                       return Text(
                         'Proc time: ${ms.toStringAsFixed(0)} ms',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      );
+                    },
+                  ),
+                  Text(
+                    'Minimum Overlap: ${faceBoxController.options.minOverlapPercent}',
+                    style: const TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                  ValueListenableBuilder<double>(
+                    valueListenable: faceBoxController.overLapsNotifier,
+                    builder: (_, overlaps, __) {
+                      log("Log Unique Overlaps: $overlaps ");
+                      return Text(
+                        'Overlaps: $overlaps',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white70,

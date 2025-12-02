@@ -45,6 +45,7 @@ class FaceBoxController {
   int _processedFrames = 0;
   Timer? _fpsTimer;
   final ValueNotifier<double> fpsNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> overLapsNotifier = ValueNotifier<double>(0.0);
 
   /// Last frame processing time in milliseconds (time spent in to all processing in image stream)
   final ValueNotifier<double> processingTimeNotifier = ValueNotifier<double>(
@@ -177,6 +178,7 @@ class FaceBoxController {
           limitBoxCoordinate: options.boxLimitRect,
           detectionFaceCoordinate: rect,
         );
+        overLapsNotifier.value = dh.overlapPercent();
 
         final isInside = dh.isInside(
           isRequiredCenter: options.requireCenterInside,
